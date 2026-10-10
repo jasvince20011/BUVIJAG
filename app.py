@@ -1,8 +1,9 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from google import genai
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as PDFImage
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from io import BytesIO
@@ -369,7 +370,189 @@ st.set_page_config(
     layout="wide"
 )
 
+
 # ==========================================
+# Reference artwork supplied for the login background; keep this asset beside app.py.
+LOGIN_BG_PATH = Path(__file__).with_name("BUVIJAG_login_reference.webp")
+LOGIN_BG_DATA_URI = ""
+if LOGIN_BG_PATH.exists():
+    try:
+        LOGIN_BG_DATA_URI = "data:image/webp;base64," + base64.b64encode(LOGIN_BG_PATH.read_bytes()).decode("ascii")
+    except Exception:
+        LOGIN_BG_DATA_URI = ""
+
+# BUVIJAG PERMANENT LOGIN — GLOBAL DATA-WORLD HUB
+# Set APP_USERNAME and APP_PASSWORD in .streamlit/secrets.toml
+# ==========================================
+if "buvijag_authenticated" not in st.session_state:
+    st.session_state.buvijag_authenticated = False
+
+if not st.session_state.buvijag_authenticated:
+    st.markdown(r"""
+    <style>
+    .stApp {background:radial-gradient(ellipse at 50% 18%,rgba(27,83,206,.28),transparent 34%),radial-gradient(ellipse at 13% 72%,rgba(0,210,255,.15),transparent 31%),radial-gradient(ellipse at 88% 70%,rgba(177,43,255,.20),transparent 34%),linear-gradient(135deg,#030713 0%,#080d25 48%,#100521 100%) !important;color:#f5f7ff;}
+    /* Full-screen login: remove Streamlit's empty top chrome and container gap. */
+    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {height:0!important;min-height:0!important;visibility:hidden!important;display:none!important;}
+    [data-testid="stAppViewContainer"], [data-testid="stMain"] {padding-top:0!important;margin-top:0!important;}
+    div[data-testid="stMainBlockContainer"], .block-container {max-width:100%!important;padding-top:0!important;padding-bottom:0!important;margin-top:0!important;}
+    .bj-login-stage{position:relative;isolation:isolate;min-height:calc(100vh - 10px);overflow:hidden;border:1px solid rgba(91,143,255,.26);border-radius:26px;background:radial-gradient(ellipse at 50% 42%,rgba(20,88,205,.23),transparent 38%),linear-gradient(180deg,rgba(3,8,25,.78),rgba(7,5,24,.96));box-shadow:0 30px 100px rgba(0,0,0,.48);padding:18px 22px 30px;text-align:center;margin:0!important;width:100%;}
+    .bj-login-stage:before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(90deg,transparent 49.8%,rgba(75,129,255,.12) 50%,transparent 50.2%),linear-gradient(0deg,transparent 49.8%,rgba(75,129,255,.08) 50%,transparent 50.2%);background-size:72px 72px;mask-image:radial-gradient(ellipse at center,#000 8%,transparent 77%);animation:bjGridDrift 18s linear infinite}
+    .bj-login-stage:after{content:"";position:absolute;z-index:-1;inset:-40%;background:conic-gradient(from 0deg,transparent 0 28%,rgba(35,127,255,.10),transparent 42% 63%,rgba(205,60,255,.11),transparent 78%);animation:bjHubSpin 36s linear infinite}
+    .bj-hub-head{position:relative;z-index:2;margin:4px auto 0;color:#b9c8f8;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase}
+    .bj-hub-title{position:relative;z-index:2;margin:8px auto 0;font-size:clamp(28px,4.5vw,54px);font-weight:950;letter-spacing:2px;background:linear-gradient(100deg,#e7fbff,#65ddff 32%,#9b8cff 68%,#f0a4ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 42px rgba(66,151,255,.15)}
+    .bj-hub-tag{position:relative;z-index:2;margin:7px auto 16px;color:#a7b5df;font-size:12px;letter-spacing:2.8px;text-transform:uppercase}
+    .bj-hub-layout{position:relative;z-index:2;display:grid;grid-template-columns:minmax(150px,1fr) minmax(320px,1.3fr) minmax(150px,1fr);gap:18px;align-items:center;max-width:1320px;margin:0 auto}
+    .bj-side-panel{border:1px solid rgba(57,144,255,.38);border-radius:16px;padding:16px 15px;background:linear-gradient(145deg,rgba(6,24,57,.80),rgba(11,9,39,.78));box-shadow:0 0 32px rgba(0,132,255,.10),inset 0 1px rgba(255,255,255,.05);text-align:left;min-height:270px;backdrop-filter:blur(4px)}
+    .bj-panel-title{color:#64e6ff;font-size:11px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;margin-bottom:14px}
+    .bj-mini-stat{display:flex;justify-content:space-between;gap:8px;color:#9eadd2;font-size:11px;padding:9px 0;border-bottom:1px solid rgba(111,145,255,.13)}.bj-mini-stat strong{color:#eef7ff;font-size:13px}
+    .bj-bars{height:86px;display:flex;align-items:end;gap:7px;margin:16px 0 9px}.bj-bars span{flex:1;border-radius:5px 5px 0 0;background:linear-gradient(0deg,#4e43d9,#22d9ff);box-shadow:0 0 12px rgba(35,198,255,.28);animation:bjBarPulse 2.6s ease-in-out infinite alternate}.bj-bars span:nth-child(1){height:28%}.bj-bars span:nth-child(2){height:47%;animation-delay:.2s}.bj-bars span:nth-child(3){height:38%;animation-delay:.4s}.bj-bars span:nth-child(4){height:65%;animation-delay:.6s}.bj-bars span:nth-child(5){height:52%;animation-delay:.8s}.bj-bars span:nth-child(6){height:83%;animation-delay:1s}.bj-bars span:nth-child(7){height:72%;animation-delay:1.2s}
+    .bj-hub-core{position:relative;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 12px}
+    .bj-globe{position:relative;width:clamp(210px,26vw,320px);height:clamp(210px,26vw,320px);border-radius:50%;margin:0 auto 20px;background:radial-gradient(circle at 35% 30%,rgba(100,231,255,.23),rgba(23,73,173,.18) 33%,rgba(14,10,56,.72) 67%,rgba(2,5,18,.98) 73%);box-shadow:inset -18px -10px 35px rgba(2,3,20,.9),inset 9px 6px 32px rgba(73,199,255,.35),0 0 42px rgba(42,146,255,.27),0 0 100px rgba(107,65,255,.15);overflow:visible;animation:bjGlobeBreathe 4s ease-in-out infinite}
+    .bj-globe:before{content:"";position:absolute;inset:2%;border-radius:50%;background:repeating-linear-gradient(0deg,transparent 0 17px,rgba(66,209,255,.16) 18px 19px),repeating-linear-gradient(90deg,transparent 0 17px,rgba(113,132,255,.13) 18px 19px);mask-image:radial-gradient(circle,#000 0 66%,transparent 70%);animation:bjGlobeSpin 30s linear infinite}
+    .bj-globe:after{content:"";position:absolute;inset:7% -18%;border:2px solid rgba(69,204,255,.78);border-radius:50%;transform:rotate(-25deg) scaleY(.42);box-shadow:0 0 16px rgba(61,193,255,.5),inset 0 0 14px rgba(160,93,255,.24)}
+    .bj-continent{position:absolute;inset:18%;border-radius:45% 55% 52% 48%;background:radial-gradient(ellipse at 34% 26%,rgba(133,244,255,.9) 0 2px,transparent 4px),radial-gradient(ellipse at 48% 38%,rgba(64,216,255,.55) 0 4%,transparent 9%),radial-gradient(ellipse at 65% 30%,rgba(137,116,255,.55) 0 5%,transparent 12%),radial-gradient(ellipse at 30% 65%,rgba(55,196,255,.65) 0 7%,transparent 14%),radial-gradient(ellipse at 68% 68%,rgba(166,100,255,.58) 0 5%,transparent 12%);filter:drop-shadow(0 0 10px #26cfff);transform:rotate(-16deg)}
+    .bj-orbit{position:absolute;inset:-7% -17%;border:1px solid rgba(175,99,255,.82);border-radius:50%;transform:rotate(32deg) scaleY(.39);animation:bjOrbitSpin 12s linear infinite}.bj-orbit:after{content:"";position:absolute;left:14%;top:49%;width:8px;height:8px;border-radius:50%;background:#d4a3ff;box-shadow:0 0 20px #c86bff}
+    .bj-orbit.bj-orbit-two{inset:-17% -4%;border-color:rgba(56,216,255,.72);transform:rotate(-52deg) scaleY(.42);animation-duration:17s;animation-direction:reverse}
+    .bj-login-heading{text-align:center;font-size:21px;font-weight:850;color:#f7f8ff;margin-bottom:3px}.bj-login-sub{text-align:center;color:#aeb9db;font-size:12px;margin-bottom:15px}
+    div[data-testid="stForm"]{max-width:500px;margin:-285px auto 22px!important;position:relative;z-index:20;padding:20px!important;border:1px solid rgba(110,143,255,.48)!important;border-radius:18px!important;background:linear-gradient(145deg,rgba(8,16,42,.97),rgba(24,8,52,.97))!important;box-shadow:0 0 38px rgba(63,107,255,.24),0 0 42px rgba(193,57,255,.13),inset 0 1px rgba(255,255,255,.07)!important;backdrop-filter:blur(6px)}
+    .bj-login-foot{color:#8f9bc3;font-size:11px;letter-spacing:.8px;text-align:center;margin-top:15px}
+    .stTextInput label{color:#d8e3ff!important}.stTextInput input{background:rgba(22,31,61,.88)!important;border:1px solid rgba(104,140,255,.32)!important;color:#f7f8ff!important;border-radius:10px!important}.stFormSubmitButton button{background:linear-gradient(100deg,#12c9ed,#5865f2 55%,#c044f5)!important;border:0!important;color:#fff!important;font-weight:850!important;border-radius:10px!important;box-shadow:0 0 22px rgba(69,123,255,.28)!important}
+    @keyframes bjHubSpin{to{transform:rotate(360deg)}}@keyframes bjGridDrift{to{background-position:72px 72px}}@keyframes bjGlobeBreathe{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.025);filter:brightness(1.2)}}@keyframes bjGlobeSpin{to{transform:rotate(360deg)}}@keyframes bjOrbitSpin{to{rotate:360deg}}@keyframes bjBarPulse{to{filter:brightness(1.6)}}
+    @media(max-width:900px){.bj-login-stage{min-height:unset}.bj-hub-layout{grid-template-columns:1fr}.bj-side-panel{display:none}.bj-hub-core{min-height:unset}.bj-globe{width:220px;height:220px}.bj-hub-tag{letter-spacing:1.5px}}
+    @media(prefers-reduced-motion:reduce){.bj-login-stage:before,.bj-login-stage:after,.bj-globe,.bj-globe:before,.bj-orbit,.bj-bars span{animation:none!important}}
+    </style>
+    <div class="bj-login-stage"></div>
+    """, unsafe_allow_html=True)
+
+    if LOGIN_BG_DATA_URI:
+        st.markdown(f"""
+        <style>
+        .bj-login-stage {{
+          background-image:radial-gradient(ellipse 36% 27% at 50% 78%,rgba(4,6,24,.99) 0%,rgba(4,6,24,.94) 54%,rgba(4,6,24,.62) 76%,transparent 100%),
+          linear-gradient(180deg,rgba(2,5,20,.12),rgba(4,5,22,.36) 48%,rgba(5,4,20,.90)),
+          url("{LOGIN_BG_DATA_URI}") !important;
+          background-size:cover !important;background-position:center center !important;
+          background-repeat:no-repeat !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+    # Credentials are persistent and privately configured in .streamlit/secrets.toml.
+    try:
+        expected_user = str(st.secrets["APP_USERNAME"])
+        expected_pass = str(st.secrets["APP_PASSWORD"])
+    except Exception:
+        st.error("Permanent login is not configured. Add APP_USERNAME and APP_PASSWORD to .streamlit/secrets.toml.")
+        st.code('GEMINI_API_KEY = "your_existing_key"\nAPP_USERNAME = "your_username"\nAPP_PASSWORD = "your_strong_password"')
+        st.stop()
+
+    with st.form("buvijag_login_form"):
+        login_user = st.text_input("Username", placeholder="Enter username")
+        login_pass = st.text_input("Password", type="password", placeholder="Enter password")
+        login_submit = st.form_submit_button("🔒  Sign in to BUVIJAG AI", use_container_width=True)
+    if login_submit:
+        if login_user.strip() == expected_user and login_pass == expected_pass:
+            st.session_state.buvijag_authenticated = True
+            st.session_state.buvijag_login_animation = True
+            st.session_state.buvijag_animation_started = False
+            st.rerun()
+        else:
+            st.error("Username or password is incorrect.")
+    st.markdown('<div class="bj-login-foot">PRIVATE WORKSPACE • AI-POWERED ANALYSIS • BUSINESS-READY REPORTS</div>', unsafe_allow_html=True)
+    st.stop()
+
+if st.session_state.get("buvijag_login_animation", False):
+    # Restore the original live canvas title reveal. This is intentionally
+    # self-contained (no low-quality pre-rendered MP4) and avoids blocking sleep.
+    st.markdown("""
+    <style id="buvijag-animation-mode-cleanup">
+      [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;}
+      [data-testid="stAppViewContainer"], [data-testid="stMain"] {padding-top:0!important;margin-top:0!important;}
+      [data-testid="stMainBlockContainer"], .block-container {padding-top:0!important;margin-top:0!important;}
+      [data-testid="stForm"], [data-testid="stTextInput"], [data-testid="stFormSubmitButton"], .bj-login-stage, .bj-login-foot {display:none!important;visibility:hidden!important;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    cinematic_html = r"""
+    <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;background:#030511;overflow:hidden;font-family:Arial,sans-serif}
+    #scene{position:relative;height:100%;min-height:600px;width:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#111c50 0%,#08091e 43%,#03040c 100%)}
+    canvas{position:absolute;inset:0;width:100%;height:100%}
+    .shade{position:absolute;inset:0;background:radial-gradient(ellipse,transparent 20%,rgba(0,0,8,.52) 100%);pointer-events:none}
+    #word{position:absolute;top:47%;left:0;right:0;text-align:center;font-size:clamp(48px,9vw,125px);font-weight:1000;letter-spacing:.13em;opacity:0;filter:blur(10px);transform:scale(.82);transition:opacity .85s cubic-bezier(.16,1,.3,1),filter .85s cubic-bezier(.16,1,.3,1),transform .95s cubic-bezier(.16,1,.3,1);background:linear-gradient(100deg,#f5ffff,#46dcff 27%,#6288ff 52%,#b56aff 76%,#f1d8ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 25px rgba(50,107,255,.72);will-change:opacity,transform,filter}
+    #word.show{opacity:1;filter:blur(0);transform:scale(1)}
+    #tag{position:absolute;top:59%;left:0;right:0;text-align:center;letter-spacing:.28em;font-size:12px;color:#c9d2ff;opacity:0;transition:opacity .85s cubic-bezier(.16,1,.3,1)}
+    #tag.show{opacity:1}
+    #status{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.25em;color:#7b9de7}
+    @media(max-width:700px){#scene{min-height:520px}#word{letter-spacing:.07em}#tag{letter-spacing:.12em;font-size:9px}}
+    @media(prefers-reduced-motion:reduce){#word,#tag{transition:none}}
+    </style></head><body><div id="scene"><canvas id="c"></canvas><div class="shade"></div><div id="word">BUVIJAG</div><div id="tag">SHARP INTELLIGENCE FOR A DATA-DRIVEN WORLD</div><div id="status">ROTATING GLOBAL DATA WORLD</div></div>
+    <script>
+    (()=>{
+      const c=document.getElementById('c'),x=c.getContext('2d',{alpha:true});
+      const word=document.getElementById('word'),tag=document.getElementById('tag'),status=document.getElementById('status');
+      let W=1,H=1,D=1,P=[],T=[],begin=performance.now(),lastDraw=0;
+      const N=650,tau=Math.PI*2,FRAME_MS=1000/30;
+      function setup(){
+        const r=c.getBoundingClientRect();W=Math.max(1,r.width);H=Math.max(1,r.height);D=Math.min(window.devicePixelRatio||1,1);
+        c.width=Math.floor(W*D);c.height=Math.floor(H*D);x.setTransform(D,0,0,D,0,0);
+        const b=document.createElement('canvas'),q=b.getContext('2d');b.width=Math.max(1,Math.floor(Math.min(W*.88,1050)));b.height=Math.max(1,Math.floor(Math.min(H*.30,230)));
+        q.fillStyle='white';q.font=`900 ${b.height*.76}px Arial Black,Arial`;q.textAlign='center';q.textBaseline='middle';q.fillText('BUVIJAG',b.width/2,b.height/2);
+        const a=q.getImageData(0,0,b.width,b.height).data;T=[];
+        for(let y=0;y<b.height;y+=3)for(let z=0;z<b.width;z+=3)if(a[(y*b.width+z)*4+3]>80)T.push({x:W/2-b.width/2+z,y:H*.46-b.height/2+y});
+        P=Array.from({length:N},(_,i)=>{const ang=Math.random()*tau,rad=Math.max(W,H)*(.25+Math.random()*.45),t=T[i*T.length/N|0]||{x:W/2,y:H/2};return{sx:W/2+Math.cos(ang)*rad,sy:H*.46+Math.sin(ang)*rad,tx:t.x,ty:t.y,ang,seed:Math.random()*tau,v:Math.random()>.5?String(Math.floor(Math.random()*10)):['0.87','1.04','101','011','2.71','64'][Math.random()*6|0],h:Math.random()}});
+      }
+      function globe(now,alpha){
+        if(alpha<=.01)return;const cx=W/2,cy=H*.45,R=Math.min(W*.18,H*.30);x.save();x.globalAlpha=alpha;
+        const g=x.createRadialGradient(cx-R*.3,cy-R*.3,1,cx,cy,R*1.4);g.addColorStop(0,'rgba(45,160,255,.35)');g.addColorStop(.55,'rgba(52,47,168,.2)');g.addColorStop(1,'transparent');x.fillStyle=g;x.beginPath();x.arc(cx,cy,R*1.4,0,tau);x.fill();
+        x.beginPath();x.arc(cx,cy,R,0,tau);x.clip();x.fillStyle='rgba(7,20,63,.55)';x.fillRect(cx-R,cy-R,2*R,2*R);x.strokeStyle='rgba(70,208,255,.35)';x.lineWidth=1;
+        for(let i=-4;i<=4;i++){const xx=i*R/4;x.beginPath();x.ellipse(cx+Math.sin(now*.0005)*xx,cy,Math.max(1,Math.abs(R*Math.sqrt(Math.max(0,1-(xx/R)**2))*.35)),R,0,0,tau);x.stroke()}
+        for(let j=-3;j<=3;j++){const yy=j*R/4;x.beginPath();x.ellipse(cx,cy+yy,R*Math.sqrt(Math.max(0,1-(yy/R)**2)),R*.1,0,0,tau);x.stroke()}
+        for(let i=0;i<90;i++){const lon=i*2.4+now*.00035,lat=Math.sin(i*1.71)*1.1,xx=cx+Math.sin(lon)*Math.cos(lat)*R,yy=cy+Math.sin(lat)*R;if(Math.cos(lon)>-.1){x.fillStyle=i%4?'#40d9ff':'#ba78ff';x.globalAlpha=alpha*(.42+.24*Math.sin(i*3.1));x.fillRect(xx,yy,1.6,1.6)}}x.restore();
+        x.save();x.translate(cx,cy);x.rotate(-.35+Math.sin(now*.0004)*.1);x.strokeStyle='rgba(154,96,255,.8)';x.beginPath();x.ellipse(0,0,R*1.45,R*.4,0,0,tau);x.stroke();x.rotate(.9);x.strokeStyle='rgba(53,218,255,.8)';x.beginPath();x.ellipse(0,0,R*1.3,R*.31,0,0,tau);x.stroke();x.restore();
+      }
+      function smooth(v){v=Math.max(0,Math.min(1,v));return v*v*(3-2*v)}
+      function frame(now){
+        if(now-lastDraw<FRAME_MS){requestAnimationFrame(frame);return}lastDraw=now;
+        const e=now-begin;x.clearRect(0,0,W,H);globe(now,1-smooth((e-1900)/1500));
+        if(e>1400&&e<3500){const p=Math.min(1,(e-1400)/800),rad=Math.max(W,H)*(.1+p*.6),g=x.createRadialGradient(W/2,H*.45,1,W/2,H*.45,rad);g.addColorStop(0,`rgba(225,250,255,${.38*(1-p*.5)})`);g.addColorStop(.25,`rgba(40,190,255,${.28*(1-p*.5)})`);g.addColorStop(.55,`rgba(160,55,255,${.22*(1-p*.5)})`);g.addColorStop(1,'transparent');x.fillStyle=g;x.fillRect(0,0,W,H);for(let k=0;k<4;k++){x.beginPath();x.strokeStyle=`rgba(${k%2?190:55},${k%2?90:210},255,${.42*(1-p)})`;x.lineWidth=1.5;x.arc(W/2,H*.45,p*Math.max(W,H)*(.12+k*.1),0,tau);x.stroke()}}
+        for(const p of P){
+          const cx=W/2,cy=H*.45,spread=Math.max(W,H),orbitT=smooth((e-850)/950),gatherT=smooth((e-2050)/2450),burstRadius=spread*(.12+.44*smooth((e-1350)/1000));
+          const orbitX=cx+Math.cos(p.ang+now*.00022)*burstRadius,orbitY=cy+Math.sin(p.ang+now*.00022)*burstRadius*.58,burstX=cx+Math.cos(p.ang+now*.00022)*spread*.62,burstY=cy+Math.sin(p.ang+now*.00022)*spread*.43;
+          const sx=p.sx+Math.sin(now*.0012+p.seed)*5,sy=p.sy+Math.cos(now*.0012+p.seed)*5,mx=sx+(orbitX-sx)*orbitT,my=sy+(orbitY-sy)*orbitT,expT=smooth((e-1650)/900),ex=mx+(burstX-mx)*expT,ey=my+(burstY-my)*expT,finalT=smooth((e-2350)/2600),xx=ex+(p.tx-ex)*finalT,yy=ey+(p.ty-ey)*finalT;
+          const op=e<850?.18+e/850*.22:(e<2100?.38+.54*smooth((e-850)/1250):(e<4950?.92-.18*finalT:.78+Math.sin(now*.002+p.seed)*.10));
+          const fs=e<2350?1.45:1.45+.6*finalT;x.font=`700 ${fs}px monospace`;x.fillStyle=`hsla(${p.h<.55?190:p.h<.8?225:275},100%,${68+16*finalT}%,${op})`;x.fillText(p.v,xx,yy);
+        }
+        if(e>3500){word.classList.add('show');tag.classList.add('show');status.textContent='INSIGHT  /  VISUALISE  /  DECIDE'}else if(e>1450)status.textContent='NUMERIC DATA PARTICLES SYNCHRONISING';
+        if(e<5800)requestAnimationFrame(frame);else {word.classList.add('show');tag.classList.add('show');status.textContent='BUVIJAG AI  /  READY'}
+      }
+      window.addEventListener('resize',()=>{setup();});setup();requestAnimationFrame(frame);
+    })();
+    </script></body></html>
+    """
+
+    if not st.session_state.get("buvijag_animation_started", False):
+        st.session_state.buvijag_animation_started = True
+        st.session_state.buvijag_animation_started_at = time.monotonic()
+
+    components.html(cinematic_html, height=635, scrolling=False)
+
+    # Only a single timer wake-up after the client animation; no main-thread sleep.
+    @st.fragment(run_every="6s")
+    def _buvijag_animation_timer():
+        started_at = st.session_state.get("buvijag_animation_started_at", time.monotonic())
+        if time.monotonic() - started_at >= 5.8:
+            st.session_state.buvijag_login_animation = False
+            st.session_state.buvijag_animation_started = False
+            st.session_state.pop("buvijag_animation_started_at", None)
+            st.rerun()
+
+    _buvijag_animation_timer()
+    st.stop()
+
+
 # COLOR THEME ENGINE
 # ==========================================
 THEME_OPTIONS = {
@@ -392,11 +575,14 @@ if not st.session_state.entered_buvijag:
     st.markdown("""
     <style>
     .stApp {background:radial-gradient(circle at 50% 8%,rgba(110,76,255,.28),transparent 26%),radial-gradient(circle at 8% 55%,rgba(0,220,255,.16),transparent 28%),radial-gradient(circle at 92% 62%,rgba(175,70,255,.16),transparent 30%),linear-gradient(135deg,#05030d 0%,#0b0820 45%,#080511 100%);overflow-x:hidden;}
-    .block-container {max-width:1450px;padding-top:.5rem;padding-bottom:1rem;}
+    .block-container {max-width:1450px;padding-top:.25rem!important;padding-bottom:1rem;}
+    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {height:0!important;min-height:0!important;visibility:hidden!important;display:none!important;}
+    [data-testid="stAppViewContainer"] {padding-top:0!important;margin-top:0!important;}
+    div[data-testid="stMainBlockContainer"] {padding-top:.25rem!important;margin-top:0!important;}
     .welcome-shell {position:relative;min-height:calc(100vh - 30px);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:30px 20px;}
     .welcome-grid {position:absolute;inset:0;opacity:.22;background-image:linear-gradient(rgba(125,93,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(125,93,255,.14) 1px,transparent 1px);background-size:58px 58px;mask-image:linear-gradient(to bottom,transparent,black 20%,black 75%,transparent);animation:gridMove 18s linear infinite;}
     @keyframes gridMove {from{transform:translateY(0)}to{transform:translateY(58px)}}
-    .welcome-orb {position:absolute;border-radius:50%;filter:blur(2px);animation:orbFloat 7s ease-in-out infinite;pointer-events:none;}
+    .welcome-orb {position:absolute;border-radius:50%;filter:blur(1px);animation:orbFloat 7s ease-in-out infinite;pointer-events:none;}
     .orb1 {width:260px;height:260px;left:-90px;top:12%;background:radial-gradient(circle,rgba(0,220,255,.22),transparent 68%);}.orb2 {width:340px;height:340px;right:-120px;bottom:8%;background:radial-gradient(circle,rgba(150,70,255,.24),transparent 68%);animation-delay:-2.2s;}.orb3 {width:170px;height:170px;right:20%;top:4%;background:radial-gradient(circle,rgba(92,76,255,.22),transparent 68%);animation-delay:-4s;}
     @keyframes orbFloat {0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,-22px,0) scale(1.06)}}
     .welcome-particle {position:absolute;width:4px;height:4px;border-radius:50%;background:#b8c7ff;box-shadow:0 0 16px #7c6cff;animation:particleFloat linear infinite;opacity:.75;}
@@ -423,6 +609,7 @@ if not st.session_state.entered_buvijag:
     .scan {height:1px;width:100%;background:linear-gradient(90deg,transparent,rgba(85,220,255,.5),transparent);position:absolute;top:0;left:0;animation:scanDown 5s linear infinite;opacity:.55;}
     @keyframes scanDown {0%{transform:translateY(0);opacity:0}10%{opacity:.7}90%{opacity:.7}100%{transform:translateY(620px);opacity:0}}
     @media(max-width:760px){.welcome-card{padding:42px 20px 30px;border-radius:25px}.welcome-card:after{border-radius:24px}.welcome-title{letter-spacing:-2px}.welcome-sub{font-size:14px}.welcome-ideas{grid-template-columns:1fr}.idea{text-align:center}.welcome-logo{max-height:100px}.welcome-shell{padding:10px}.welcome-foot{flex-wrap:wrap;}}
+    @media(prefers-reduced-motion:reduce){.welcome-grid,.welcome-orb,.welcome-particle,.welcome-card:before,.welcome-logo,.welcome-title,.welcome-badge,.scan{animation:none!important;transition:none!important}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -443,9 +630,9 @@ if not st.session_state.entered_buvijag:
         <div class="scan"></div>
         <div class="welcome-badge"><span class="badge-dot"></span> AI BUSINESS INTELLIGENCE</div>
         <img class="welcome-logo" src="__LOGO__" alt="BUVIJAG AI">
-        <div class="welcome-kicker">Sharp Intelligence for a Data-Driven World</div>
+        <div class="welcome-kicker">Sharp Intelligence for a Data-Driven World</div><div style="color:#b9b2e8;font-size:13px;margin-top:7px">புவிஜாக் AI • BUVIJAG AI</div>
         <div class="welcome-title">Your data has<br>more to say.</div>
-        <div class="welcome-sub">Meet BUVIJAG — an intelligent business analysis workspace that turns raw data into clear insights, visual stories, inventory signals and decisions you can act on.</div>
+        <div class="welcome-sub">Meet BUVIJAG — an intelligent business analysis workspace that turns raw data into clear insights, visual stories, operational signals and decisions you can act on.</div>
         <div class="welcome-ideas">
           <div class="idea"><div class="idea-icon">◈</div><div class="idea-title">Ask your data</div><div class="idea-text">Upload business files and let AI discover what matters.</div></div>
           <div class="idea"><div class="idea-icon">✦</div><div class="idea-title">See the hidden signals</div><div class="idea-text">Find trends, anomalies, KPIs and opportunities automatically.</div></div>
@@ -459,10 +646,14 @@ if not st.session_state.entered_buvijag:
     c1, c2, c3 = st.columns([1.15, 1, 1.15])
     with c2:
         if st.button("🚀  Enter BUVIJAG", use_container_width=True, key="enter_buvijag"):
+            # Switch directly to the workspace; do not render a transition iframe.
             st.session_state.entered_buvijag = True
             st.rerun()
-    st.markdown("<div class='welcome-foot'><span>Private workspace</span><span>•</span><span>AI-powered analysis</span><span>•</span><span>Business-ready reports</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='welcome-foot'><span>Press Enter when the button is focused</span><span>•</span><span>Private workspace</span><span>•</span><span>AI-powered analysis</span><span>•</span><span>Business-ready reports</span></div>", unsafe_allow_html=True)
     st.stop()
+
+# The welcome page is stopped above. Once Enter BUVIJAG is clicked, render
+# the workspace directly without an extra iframe, delay, or duplicate welcome panel.
 
 # ==========================================
 # GLASSMORPHISM AI COMMAND CENTER STYLE
@@ -481,9 +672,12 @@ st.markdown("""
 
 .block-container {
     max-width: 1450px;
-    padding-top: 1.5rem;
+    padding-top: .25rem !important;
     padding-bottom: 4rem;
 }
+[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {height:0!important;min-height:0!important;visibility:hidden!important;display:none!important;}
+[data-testid="stAppViewContainer"] {padding-top:0!important;margin-top:0!important;}
+div[data-testid="stMainBlockContainer"] {padding-top:.25rem!important;margin-top:0!important;}
 
 h1 { font-size: 3rem !important; font-weight: 800 !important; letter-spacing: -1.5px; }
 h2, h3 { font-weight: 750 !important; }
@@ -1721,6 +1915,7 @@ st.markdown(f"""
         <a href="#reports">Reports</a>
         <a href="#recent">Recent</a>
         <a href="#demo">Demo</a>
+        <a href="#ask">✦ Ask AI</a>
       </div>
     </div>
     <div class="bj-nav-actions">
@@ -1741,7 +1936,7 @@ st.markdown(f"""
       <a class="bj-cta" href="#analyze">Start analyzing&nbsp; →</a>
       <a class="bj-cta secondary" href="#intelligence">Explore AI intelligence</a>
     </div>
-    <div class="bj-proof">One workspace • AI reasoning • visual insights • inventory intelligence • executive reports</div>
+    <div class="bj-proof">One workspace • AI reasoning • visual insights • business operations • executive reports</div>
   </div>
 
   <div class="bj-section-label">BUVIJAG WORKFLOW</div>
@@ -1995,6 +2190,22 @@ if active_history_item:
 else:
     analysis_items, uploaded_files = _process_uploaded_files(raw_uploaded_files)
 
+# Clear upload feedback: only claim success for files that the app actually processed.
+if raw_uploaded_files and uploaded_files:
+    successful_names = [getattr(f, "name", "Uploaded file") for f in uploaded_files]
+    st.success(f"✅ Upload successful — {len(successful_names)} file(s) are ready for analysis: " + ", ".join(successful_names))
+    st.components.v1.html("""
+    <div id="buvijag-upload-burst" style="height:82px;position:relative;overflow:hidden;border:1px solid rgba(91,105,255,.45);border-radius:14px;background:linear-gradient(110deg,rgba(5,14,42,.95),rgba(34,15,75,.95));color:#dffaff;font:600 15px system-ui;display:flex;align-items:center;justify-content:center;letter-spacing:.4px">
+      <span style="position:relative;z-index:2;text-shadow:0 0 14px #37dfff">✦ UPLOAD SUCCESSFUL · DATA READY</span>
+      <canvas id="uploadBurstCanvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+    </div>
+    <script>
+    (()=>{const c=document.getElementById('uploadBurstCanvas');if(!c)return;const ctx=c.getContext('2d');let w=0,h=0;function resize(){const r=c.getBoundingClientRect();w=c.width=Math.max(1,r.width*devicePixelRatio);h=c.height=Math.max(1,r.height*devicePixelRatio)}resize();const colors=['#35e7ff','#6c7dff','#bb66ff','#f2f7ff'];const ps=Array.from({length:150},()=>({a:Math.random()*Math.PI*2,r:Math.random()*8+2,v:Math.random()*2.4+0.6,s:Math.random()*2+0.7,color:colors[Math.floor(Math.random()*colors.length)],life:Math.random()}));let start=performance.now();function frame(now){ctx.clearRect(0,0,w,h);const t=(now-start)/1000;const cx=w/2,cy=h/2;for(const p of ps){const radius=(p.r+t*p.v*35)%(Math.min(w,h)*.6);const x=cx+Math.cos(p.a)*radius;const y=cy+Math.sin(p.a)*radius*.55;const alpha=Math.max(0,1-((t+p.life)%2.8)/2.8);ctx.globalAlpha=alpha;ctx.fillStyle=p.color;ctx.shadowBlur=10;ctx.shadowColor=p.color;ctx.beginPath();ctx.arc(x,y,p.s*devicePixelRatio,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;ctx.shadowBlur=0;if(t<4.5)requestAnimationFrame(frame);else ctx.clearRect(0,0,w,h)}requestAnimationFrame(frame);window.addEventListener('resize',resize,{passive:true})})();
+    </script>
+    """, height=92, scrolling=False)
+elif raw_uploaded_files:
+    st.warning("The files were selected, but none were successfully processed. Check the file type or any error messages below.")
+
 # ==========================================
 # RECENT — REOPEN PREVIOUS UPLOADS
 # ==========================================
@@ -2068,7 +2279,7 @@ if analysis_items:
                 padding:18px; margin-bottom:14px; border-radius:18px;
                 background:rgba(255,255,255,.045);
                 border:1px solid rgba(255,255,255,.10);
-                backdrop-filter:blur(16px); min-height:105px;">
+                backdrop-filter:blur(6px); min-height:105px;">
                 <div style="font-size:12px;color:#a5b4fc;font-weight:800;">
                     DATASET {i+1:02d}
                 </div>
@@ -2185,124 +2396,87 @@ if uploaded_files:
         )
 
         # ======================================
-        # DATASET INFORMATION
+        # DATASET INFORMATION — INTERACTIVE TABS
         # ======================================
-
         st.subheader("📋 Dataset Information")
+        st.caption("Choose a tab to explore the structure, quality and statistics of this dataset.")
 
-        st.write("### Column Names")
-
-        st.write(
-            df.columns.tolist()
-        )
-
-        # ======================================
-        # DATA TYPES
-        # ======================================
-
-        st.write("### Data Types")
-
+        numeric_columns = df.select_dtypes(include="number").columns.tolist()
+        categorical_columns = df.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
         dtype_df = pd.DataFrame({
-            "Column": df.columns,
+            "Column": df.columns.astype(str),
             "Data Type": df.dtypes.astype(str).values
         })
-
-        st.dataframe(
-            dtype_df,
-            use_container_width=True
-        )
-
-        # ======================================
-        # NUMERIC COLUMNS
-        # ======================================
-
-        numeric_columns = df.select_dtypes(
-            include="number"
-        ).columns.tolist()
-
-        st.write("### 🔢 Numeric Columns")
-
-        if numeric_columns:
-
-            st.write(numeric_columns)
-
-        else:
-
-            st.info(
-                "No numeric columns found."
-            )
-
-        # ======================================
-        # CATEGORICAL COLUMNS
-        # ======================================
-
-        categorical_columns = df.select_dtypes(
-            include=["object", "category"]
-        ).columns.tolist()
-
-        st.write("### 🏷️ Categorical Columns")
-
-        if categorical_columns:
-
-            st.write(categorical_columns)
-
-        else:
-
-            st.info(
-                "No categorical columns found."
-            )
-
-        # ======================================
-        # MISSING VALUES
-        # ======================================
-
-        st.write("### ⚠️ Missing Values by Column")
-
         missing_df = pd.DataFrame({
-            "Column": df.columns,
-            "Missing Values": df.isnull().sum().values
+            "Column": df.columns.astype(str),
+            "Missing Values": df.isna().sum().values,
+            "Missing %": (df.isna().mean().values * 100).round(2)
         })
+        missing_df = missing_df[missing_df["Missing Values"] > 0].sort_values("Missing Values", ascending=False)
 
-        missing_df = missing_df[
-            missing_df["Missing Values"] > 0
-        ]
+        tab_names = ["Column Names", "Data Types", "Numerical Columns", "Categorical Columns", "Missing Values", "Numerical Statistics"]
+        dataset_tabs = st.tabs(tab_names)
 
-        if not missing_df.empty:
+        with dataset_tabs[0]:
+            st.markdown("#### 🧾 Column Names")
+            st.write(f"**{len(df.columns)} columns** across **{len(df):,} rows**.")
+            columns_view = pd.DataFrame({"#": range(1, len(df.columns) + 1), "Column Name": df.columns.astype(str)})
+            st.dataframe(columns_view, use_container_width=True, hide_index=True)
+            st.download_button("⬇️ Download column list", columns_view.to_csv(index=False).encode("utf-8"), file_name="buvijag_column_names.csv", mime="text/csv", key=f"columns_download_{file_number}")
 
-            st.dataframe(
-                missing_df,
-                use_container_width=True
-            )
+        with dataset_tabs[1]:
+            st.markdown("#### 🧬 Data Types")
+            st.write("Data types show how Python interprets each field—for example, numeric values, text or dates.")
+            st.dataframe(dtype_df, use_container_width=True, hide_index=True)
 
-        else:
+        with dataset_tabs[2]:
+            st.markdown("#### 🔢 Numerical Columns")
+            st.write("These fields contain numbers and may support totals, averages, comparisons and charts.")
+            if numeric_columns:
+                st.metric("Numerical fields", len(numeric_columns))
+                st.dataframe(pd.DataFrame({"Numerical Column": numeric_columns}), use_container_width=True, hide_index=True)
+            else:
+                st.info("No numerical columns were detected in this dataset.")
 
-            st.success(
-                "No missing values found!"
-            )
+        with dataset_tabs[3]:
+            st.markdown("#### 🏷️ Categorical Columns")
+            st.write("These fields usually represent labels or groups, such as product, category, state or payment method.")
+            if categorical_columns:
+                cat_summary = pd.DataFrame({
+                    "Categorical Column": categorical_columns,
+                    "Unique Values": [int(df[c].nunique(dropna=True)) for c in categorical_columns],
+                    "Example Values": [", ".join(df[c].dropna().astype(str).unique()[:4]) for c in categorical_columns]
+                })
+                st.dataframe(cat_summary, use_container_width=True, hide_index=True)
+            else:
+                st.info("No categorical columns were detected in this dataset.")
 
-        # ======================================
-        # NUMERICAL STATISTICS
-        # ======================================
+        with dataset_tabs[4]:
+            st.markdown("#### ⚠️ Missing Values by Column")
+            total_missing = int(df.isna().sum().sum())
+            m1, m2 = st.columns(2)
+            m1.metric("Missing cells", f"{total_missing:,}")
+            m2.metric("Columns affected", f"{len(missing_df):,}")
+            if not missing_df.empty:
+                st.dataframe(missing_df, use_container_width=True, hide_index=True)
+                st.bar_chart(missing_df.set_index("Column")["Missing Values"], use_container_width=True)
+                st.caption("The chart compares missing-cell counts. Columns with more missing values may need cleaning before analysis.")
+            else:
+                st.success("No missing values found. Every column is complete for the rows currently loaded.")
 
-        st.write("### 📈 Numerical Statistics")
-
-        if numeric_columns:
-
-            statistics = df[
-                numeric_columns
-            ].describe().T
-
-            st.dataframe(
-                statistics,
-                use_container_width=True
-            )
-
-        else:
-
-            st.info(
-                "No numerical columns available "
-                "for statistics."
-            )
+        with dataset_tabs[5]:
+            st.markdown("#### 📈 Numerical Statistics")
+            if numeric_columns:
+                stats = df[numeric_columns].describe().T.reset_index().rename(columns={"index": "Column"})
+                st.dataframe(stats.round(3), use_container_width=True, hide_index=True)
+                st.write("**How to read this:** mean is the average; std shows spread; min and max show the range; the 25%, 50% and 75% values show the distribution's quartiles.")
+                stat_choice = st.selectbox("Choose a numerical column to visualise", numeric_columns, key=f"dataset_stats_chart_{file_number}")
+                chart_values = pd.to_numeric(df[stat_choice], errors="coerce").dropna()
+                if not chart_values.empty:
+                    st.bar_chart(chart_values.reset_index(drop=True), use_container_width=True)
+                    st.caption(f"This chart displays the available values in **{stat_choice}** by row order. Use the statistics table above for its summary and range.")
+            else:
+                st.info("No numerical columns are available for statistical analysis.")
 
         # ======================================
         # SMART AUTOMATIC CHARTS
@@ -2357,6 +2531,23 @@ if uploaded_files:
 
             st.write("### 🏷️ Category Visualizations")
 
+            # Subtle lift + neon edge when the pointer moves over a chart.
+            st.markdown("""
+            <style>
+            div[data-testid="stPlotlyChart"] {
+                border: 1px solid rgba(34,211,238,.12);
+                border-radius: 14px;
+                transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+                overflow: hidden;
+            }
+            div[data-testid="stPlotlyChart"]:hover {
+                transform: translateY(-3px) scale(1.006);
+                border-color: rgba(103,232,249,.82);
+                box-shadow: 0 0 0 1px rgba(139,92,246,.32), 0 0 22px rgba(34,211,238,.20), 0 0 34px rgba(139,92,246,.12);
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
             for column in useful_categories[:4]:
 
                 chart_data = (
@@ -2372,17 +2563,166 @@ if uploaded_files:
                         f"#### {column}"
                     )
 
-                    # Use columns so bar + pie are shown side by side
+                    # Excel-like chart editor: chart type, measure, aggregation, sorting, colours and labels.
                     chart_col1, chart_col2 = st.columns(2)
 
                     with chart_col1:
+                        st.caption("📊 Editable Category Chart")
+                        suffix = hashlib.md5(str(column).encode("utf-8")).hexdigest()[:10]
+                        with st.expander("⋮  Chart options", expanded=False):
+                            category_chart_type = st.selectbox(
+                                "Chart style",
+                                ["Bar (horizontal)", "Column (vertical)", "Line", "Area", "Scatter", "Bubble", "Pie", "Donut", "Treemap", "Sunburst", "Funnel"],
+                                index=0,
+                                key=f"bj_category_chart_style_{suffix}"
+                            )
+                            numeric_measure_options = ["Count of records"] + df.select_dtypes(include="number").columns.tolist()
+                            category_measure = st.selectbox(
+                                "Value to plot",
+                                numeric_measure_options,
+                                index=0,
+                                key=f"bj_category_measure_{suffix}",
+                                help="Choose record count or a numeric column, similar to changing a chart's Values field in Excel."
+                            )
+                            category_aggregation = st.selectbox(
+                                "Aggregation",
+                                ["Sum", "Average", "Median", "Minimum", "Maximum"],
+                                index=0,
+                                key=f"bj_category_agg_{suffix}",
+                                disabled=(category_measure == "Count of records")
+                            )
+                            sort_by = st.selectbox(
+                                "Sort by",
+                                ["Value", "Category name"],
+                                index=0,
+                                key=f"bj_category_sortby_{suffix}"
+                            )
+                            category_sort_order = st.selectbox(
+                                "Sort order",
+                                ["Original order", "Ascending", "Descending"],
+                                index=0,
+                                key=f"bj_category_sort_{suffix}"
+                            )
+                            category_palette_name = st.selectbox(
+                                "Colour palette",
+                                ["BUVIJAG Neon", "Ocean Blue", "Violet", "Pink & Purple", "Monochrome"],
+                                key=f"bj_category_palette_{suffix}"
+                            )
+                            show_value_labels = st.checkbox("Show values on chart", value=True, key=f"bj_category_labels_{suffix}")
+                            custom_chart_title = st.text_input(
+                                "Chart title", value=f"{'Count' if category_measure == 'Count of records' else category_aggregation + ' ' + category_measure} by {column}", key=f"bj_category_title_{suffix}"
+                            )
 
-                        st.caption("📊 Bar Chart")
+                        try:
+                            import plotly.express as px
 
-                        st.bar_chart(
-                            chart_data,
-                            use_container_width=True
-                        )
+                            if category_measure == "Count of records":
+                                category_df = df[column].dropna().astype(str).value_counts().rename_axis("Category").reset_index(name="Value")
+                            else:
+                                numeric_source = df[[column, category_measure]].copy()
+                                numeric_source[category_measure] = pd.to_numeric(numeric_source[category_measure], errors="coerce")
+                                numeric_source[column] = numeric_source[column].astype("string")
+                                agg_functions = {"Sum": "sum", "Average": "mean", "Median": "median", "Minimum": "min", "Maximum": "max"}
+                                category_df = numeric_source.dropna(subset=[column, category_measure]).groupby(column, dropna=True)[category_measure].agg(agg_functions[category_aggregation]).reset_index()
+                                category_df.columns = ["Category", "Value"]
+                                category_df["Category"] = category_df["Category"].astype(str)
+                            category_df = category_df.head(20).copy()
+                            category_palette_map = {
+                                "BUVIJAG Neon": ["#22D3EE", "#8B5CF6", "#3B82F6", "#EC4899", "#A78BFA", "#38BDF8", "#C084FC", "#6366F1", "#67E8F9", "#F0ABFC"],
+                                "Ocean Blue": ["#0EA5E9", "#0284C7", "#38BDF8", "#06B6D4", "#14B8A6"],
+                                "Violet": ["#7C3AED", "#8B5CF6", "#A78BFA", "#C4B5FD", "#6D28D9"],
+                                "Pink & Purple": ["#EC4899", "#D946EF", "#A855F7", "#8B5CF6", "#6366F1"],
+                                "Monochrome": ["#E5E7EB", "#9CA3AF", "#6B7280", "#4B5563", "#374151"]
+                            }
+                            category_palette = category_palette_map[category_palette_name]
+                            if category_sort_order != "Original order":
+                                ascending = category_sort_order == "Ascending"
+                                if sort_by == "Value":
+                                    category_df = category_df.sort_values("Value", ascending=ascending, kind="stable")
+                                else:
+                                    category_df = category_df.sort_values("Category", ascending=ascending, kind="stable", key=lambda col: col.str.casefold())
+
+                            # All chart styles below share the same editable measure, aggregation,
+                            # sorting, palette, title and value-label controls.
+                            if category_chart_type == "Bar (horizontal)":
+                                category_fig = px.bar(category_df, x="Value", y="Category", orientation="h", title=custom_chart_title,
+                                                      color="Category", color_discrete_sequence=category_palette)
+                                # Reverse the plotted axis so ascending/descending reads top-to-bottom.
+                                category_fig.update_yaxes(categoryorder="array", categoryarray=category_df["Category"].tolist()[::-1])
+                            elif category_chart_type == "Column (vertical)":
+                                category_fig = px.bar(category_df, x="Category", y="Value", title=custom_chart_title,
+                                                      color="Category", color_discrete_sequence=category_palette)
+                            elif category_chart_type == "Line":
+                                category_fig = px.line(category_df, x="Category", y="Value", markers=True, title=custom_chart_title,
+                                                       color_discrete_sequence=[category_palette[0]])
+                            elif category_chart_type == "Area":
+                                category_fig = px.area(category_df, x="Category", y="Value", title=custom_chart_title,
+                                                       color_discrete_sequence=[category_palette[0]])
+                            elif category_chart_type in ["Scatter", "Bubble"]:
+                                scatter_data = category_df.copy()
+                                scatter_data["Point size"] = scatter_data["Value"].abs().clip(lower=1)
+                                category_fig = px.scatter(
+                                    scatter_data, x="Category", y="Value", title=custom_chart_title,
+                                    size="Point size" if category_chart_type == "Bubble" else None,
+                                    color="Category" if category_chart_type == "Bubble" else None,
+                                    color_discrete_sequence=category_palette
+                                )
+                            elif category_chart_type == "Pie":
+                                category_fig = px.pie(category_df, names="Category", values="Value", title=custom_chart_title,
+                                                      color_discrete_sequence=category_palette)
+                            elif category_chart_type == "Donut":
+                                category_fig = px.pie(category_df, names="Category", values="Value", hole=0.48, title=custom_chart_title,
+                                                      color_discrete_sequence=category_palette)
+                            elif category_chart_type == "Treemap":
+                                category_fig = px.treemap(category_df, path=["Category"], values="Value", title=custom_chart_title,
+                                                          color="Value", color_continuous_scale="Tealgrn")
+                            elif category_chart_type == "Sunburst":
+                                category_fig = px.sunburst(category_df, path=["Category"], values="Value", title=custom_chart_title,
+                                                           color="Value", color_continuous_scale="Purples")
+                            else:  # Funnel
+                                category_fig = px.funnel(category_df, x="Value", y="Category", title=custom_chart_title,
+                                                         color="Category", color_discrete_sequence=category_palette)
+
+                            if category_chart_type in ["Bar (horizontal)", "Column (vertical)", "Funnel"]:
+                                category_fig.update_traces(
+                                    marker_line_color="rgba(255,255,255,0.7)", marker_line_width=1.0,
+                                    texttemplate="%{x}" if category_chart_type in ["Bar (horizontal)", "Funnel"] else "%{y}",
+                                    textposition="outside" if show_value_labels else "none",
+                                    hovertemplate="%{y}: %{x}<extra></extra>" if category_chart_type in ["Bar (horizontal)", "Funnel"] else "%{x}: %{y}<extra></extra>"
+                                )
+                            elif category_chart_type == "Line":
+                                category_fig.update_traces(line=dict(width=3), marker=dict(size=9, line=dict(width=1.5, color="#C4B5FD")),
+                                                           mode="lines+markers+text" if show_value_labels else "lines+markers",
+                                                           text=category_df["Value"].round(2).astype(str) if show_value_labels else None,
+                                                           textposition="top center")
+                            elif category_chart_type == "Area":
+                                category_fig.update_traces(mode="lines+text" if show_value_labels else "lines",
+                                                           text=category_df["Value"].round(2).astype(str) if show_value_labels else None,
+                                                           textposition="top center")
+                            elif category_chart_type in ["Scatter", "Bubble"]:
+                                category_fig.update_traces(
+                                    mode="markers+text" if show_value_labels else "markers",
+                                    text=category_df["Value"].round(2).astype(str) if show_value_labels else None,
+                                    textposition="top center", marker=dict(line=dict(width=1, color="#C4B5FD"))
+                                )
+                            elif category_chart_type in ["Pie", "Donut"]:
+                                category_fig.update_traces(textinfo="label+value" if show_value_labels else "label")
+                            elif category_chart_type in ["Treemap", "Sunburst"]:
+                                category_fig.update_traces(textinfo="label+value" if show_value_labels else "label")
+
+                            category_fig.update_layout(
+                                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                font=dict(color="#E8E8F7"), title_font_size=16, height=390,
+                                margin=dict(l=12, r=28, t=55, b=30), showlegend=(category_chart_type in ["Pie", "Donut"]),
+                                transition=dict(duration=450, easing="cubic-in-out")
+                            )
+                            st.plotly_chart(category_fig, use_container_width=True, key=f"bj_category_chart_{suffix}")
+                            st.download_button(
+                                "⬇️ Export chart as HTML", data=category_fig.to_html(include_plotlyjs="cdn"),
+                                file_name=f"BUVIJAG_{suffix}_chart.html", mime="text/html", key=f"bj_category_export_{suffix}"
+                            )
+                        except Exception as category_chart_error:
+                            st.warning(f"Could not render the selected category chart: {category_chart_error}")
 
                     with chart_col2:
 
@@ -2769,6 +3109,7 @@ def _local_qa_fallback(df, question):
 # ==========================================
 
 if analysis_items:
+    st.markdown('<div id="ask" class="bj-anchor"></div>', unsafe_allow_html=True)
     st.markdown("---")
     st.subheader("🔎 Ask BUVIJAG AI")
     st.write("Ask questions about your uploaded CSV, Excel, PDF or image files. BUVIJAG AI uses the selected file only.")
@@ -3483,33 +3824,144 @@ def _buvijag_render_selected_charts(df):
 
 
 def _buvijag_enhanced_pdf(title, df, executive, actions, anomalies, evidence, health):
+    """Create a readable, visual, minimum-five-page executive report from the uploaded data."""
+    from reportlab.platypus import PageBreak, Table, TableStyle, KeepTogether
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from xml.sax.saxutils import escape
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
-    styles = getSampleStyleSheet()
-    story = [Paragraph(title, styles["Title"]), Spacer(1, 12)]
-    story.append(Paragraph(f"<b>Data Health Score:</b> {health['score']}/100", styles["Heading2"]))
-    story.append(Paragraph(f"Records: {health['rows']:,} | Columns: {health['columns']:,} | Missing: {health['missing']:,} | Duplicates: {health['duplicates']:,}", styles["Normal"]))
-    story.append(Spacer(1, 12))
-    story.append(Paragraph("Executive Summary", styles["Heading2"]))
-    for line in executive.splitlines():
-        if line.strip():
-            story.append(Paragraph(line.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"), styles["Normal"]))
-            story.append(Spacer(1, 5))
-    story.append(Paragraph("Recommended Actions", styles["Heading2"]))
-    for line in actions:
-        story.append(Paragraph(line.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"), styles["Normal"]))
-        story.append(Spacer(1, 5))
-    story.append(Paragraph("Anomaly Scan", styles["Heading2"]))
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=42, leftMargin=42, topMargin=42, bottomMargin=42)
+    base = getSampleStyleSheet()
+    title_style = ParagraphStyle("BJTitle", parent=base["Title"], fontName="Helvetica-Bold", fontSize=22, leading=27, textColor=rl_colors.HexColor("#273B80"), alignment=TA_CENTER, spaceAfter=12)
+    subtitle = ParagraphStyle("BJSubtitle", parent=base["Normal"], fontSize=9, leading=13, textColor=rl_colors.HexColor("#53627C"), alignment=TA_CENTER, spaceAfter=12)
+    h1 = ParagraphStyle("BJH1", parent=base["Heading1"], fontSize=16, leading=20, textColor=rl_colors.HexColor("#3E42A8"), spaceBefore=4, spaceAfter=10)
+    h2 = ParagraphStyle("BJH2", parent=base["Heading2"], fontSize=11, leading=14, textColor=rl_colors.HexColor("#087FAD"), spaceBefore=7, spaceAfter=5)
+    body = ParagraphStyle("BJBody", parent=base["BodyText"], fontSize=9, leading=13, spaceAfter=6)
+    small = ParagraphStyle("BJSmall", parent=body, fontSize=8, leading=11, textColor=rl_colors.HexColor("#4B5563"))
+
+    def para(value, style=body):
+        txt = escape(str(value)).replace("\n", "<br/>")
+        return Paragraph(txt, style)
+
+    story = []
+    rows, cols = df.shape
+    missing = int(df.isna().sum().sum())
+    duplicate_rows = int(df.duplicated().sum())
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    categorical_cols = [c for c in df.columns if c not in numeric_cols]
+    clean_df = df.copy()
+
+    # PAGE 1 — executive cover and plain-language snapshot
+    story += [Spacer(1, 32), para("BUVIJAG AI", title_style), para("Sharp Intelligence for a Data-Driven World", subtitle), Spacer(1, 10)]
+    story += [para("EXECUTIVE INTELLIGENCE REPORT", h1), para(f"Dataset analysed: {title}", body), para(f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M')}", small), Spacer(1, 12)]
+    story += [para("What this report tells you", h2), para("This report turns the uploaded dataset into a readable business overview. It summarises the dataset, highlights data-quality risks, presents visual evidence, and lists practical next steps. Charts are calculated from the uploaded data; recommendations should be checked against business context before action.", body)]
+    kpi_data = [["DATA HEALTH", "RECORDS", "COLUMNS", "MISSING CELLS", "DUPLICATE ROWS"], [f"{health.get('score', 0)}/100", f"{rows:,}", f"{cols:,}", f"{missing:,}", f"{duplicate_rows:,}"]]
+    kt = Table(kpi_data, colWidths=[92, 78, 70, 92, 92], rowHeights=[24, 30])
+    kt.setStyle(TableStyle([("BACKGROUND", (0,0),(-1,0), rl_colors.HexColor("#252E63")), ("TEXTCOLOR",(0,0),(-1,0),rl_colors.white), ("BACKGROUND",(0,1),(-1,1),rl_colors.HexColor("#EEF3FF")), ("TEXTCOLOR",(0,1),(-1,1),rl_colors.HexColor("#172554")), ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"), ("FONTNAME",(0,1),(-1,1),"Helvetica-Bold"), ("FONTSIZE",(0,0),(-1,-1),7.5), ("ALIGN",(0,0),(-1,-1),"CENTER"), ("VALIGN",(0,0),(-1,-1),"MIDDLE"), ("BOX",(0,0),(-1,-1),0.5,rl_colors.HexColor("#B8C5E8")), ("INNERGRID",(0,0),(-1,-1),0.35,rl_colors.HexColor("#CFD8EE"))]))
+    story += [kt, Spacer(1, 15), para("How to read this report", h2), para("Start with the executive summary, review the data-health findings, then use the charts to see patterns at a glance. The final section provides evidence and limitations so that conclusions remain transparent.", body), PageBreak()]
+
+    # PAGE 2 — executive summary and actions
+    story += [para("1. Executive Summary", h1), para("Key message", h2)]
+    exec_lines = [x.strip(" •\t-") for x in str(executive or "No executive summary was supplied.").splitlines() if x.strip()]
+    if not exec_lines:
+        exec_lines = ["The dataset was processed. Review the visual evidence and data-quality findings in this report before making decisions."]
+    for line in exec_lines[:18]:
+        story.append(para(line, body))
+    story += [Spacer(1, 5), para("Recommended Next Steps", h2)]
+    action_lines = [str(x).strip(" •\t-") for x in (actions or []) if str(x).strip()]
+    if not action_lines:
+        action_lines = ["Validate key totals with the source system.", "Resolve missing or inconsistent values before operational reporting.", "Review the charts with a domain expert before acting on the findings."]
+    for i, action in enumerate(action_lines[:10], 1):
+        story.append(para(f"{i}. {action}", body))
+    story += [para("Decision note", h2), para("Recommendations are intended as decision support, not a guarantee of future results. Confirm business impact and data definitions before making financial, staffing, or inventory decisions.", small), PageBreak()]
+
+    # PAGE 3 — data quality explained
+    story += [para("2. Data Health & Quality", h1), para("Data quality matters because missing, duplicated, or inconsistent records can distort totals and trends.", body)]
+    missing_by_col = df.isna().sum().sort_values(ascending=False)
+    missing_rows = [["Column", "Missing cells", "Share of rows"]]
+    for col, n in missing_by_col[missing_by_col > 0].head(12).items():
+        missing_rows.append([str(col)[:32], f"{int(n):,}", f"{(int(n)/max(rows,1))*100:.1f}%"])
+    if len(missing_rows) == 1:
+        missing_rows.append(["No missing values detected", "0", "0.0%"])
+    mt = Table(missing_rows, colWidths=[245, 95, 95], repeatRows=1)
+    mt.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),rl_colors.HexColor("#252E63")),("TEXTCOLOR",(0,0),(-1,0),rl_colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),8),("GRID",(0,0),(-1,-1),0.35,rl_colors.HexColor("#D3D9E8")),("ROWBACKGROUNDS",(0,1),(-1,-1),[rl_colors.white,rl_colors.HexColor("#F4F7FC")]),("VALIGN",(0,0),(-1,-1),"TOP")]))
+    story += [para("Missing values by column", h2), mt, Spacer(1, 10)]
+    story += [para(f"Overall, {missing:,} missing cells were found across {rows:,} records. There are {duplicate_rows:,} exact duplicate rows. A duplicate row may be a repeated transaction or an accidental copy; check the business key before deleting it.", body)]
+    if numeric_cols:
+        negative_details=[]
+        for c in numeric_cols:
+            vals=pd.to_numeric(df[c], errors="coerce")
+            nneg=int((vals<0).sum())
+            if nneg: negative_details.append(f"{c}: {nneg} negative value(s)")
+        if negative_details:
+            story.append(para("Negative numeric values to review: " + "; ".join(negative_details[:8]) + ". These may be valid adjustments or data-entry errors; verify their meaning.", body))
+    story += [para("Suggested quality checks", h2), para("1) Confirm required fields are populated. 2) Standardise category labels and date formats. 3) Check duplicates using the correct unique identifier. 4) Investigate impossible values such as negative quantities where they are not allowed. 5) Re-run the report after corrections.", body), PageBreak()]
+
+    # PAGE 4 — charts, with interpretation text
+    story += [para("3. Visual Evidence", h1), para("Each chart is generated from this dataset. Read the short interpretation below each chart; charts describe the supplied records and do not by themselves prove cause and effect.", body)]
+    chart_count = 0
+    try:
+        if numeric_cols:
+            metric = numeric_cols[0]
+            vals = pd.to_numeric(df[metric], errors="coerce").dropna()
+            if not vals.empty:
+                cb=BytesIO(); fig,ax=plt.subplots(figsize=(7.0,3.0))
+                ax.hist(vals, bins=min(18,max(5,int(len(vals)**0.5))), color="#4F8CFF", edgecolor="#FFFFFF", alpha=.92)
+                ax.set_title(f"Distribution of {metric}"); ax.set_xlabel(str(metric)); ax.set_ylabel("Number of records")
+                ax.grid(axis="y", alpha=.2); fig.tight_layout(); fig.savefig(cb,format="png",dpi=140,bbox_inches="tight"); plt.close(fig); cb.seek(0)
+                story += [PDFImage(cb,width=455,height=195), para(f"How to read it: this histogram groups {metric} values into ranges. Taller bars show ranges that occur more often. Look for unusually high or low values and check whether they are valid business cases.", small)]
+                chart_count += 1
+        if categorical_cols and numeric_cols:
+            category = next((c for c in categorical_cols if 1 < df[c].nunique(dropna=True) <= max(100, rows)), categorical_cols[0])
+            metric = next((c for c in numeric_cols if any(k in c.lower() for k in ["revenue","sales","price","amount","profit","total","quantity","order"])), numeric_cols[0])
+            tmp=df[[category,metric]].copy(); tmp[metric]=pd.to_numeric(tmp[metric],errors="coerce"); tmp[category]=tmp[category].fillna("Missing").astype(str)
+            grouped=tmp.dropna(subset=[metric]).groupby(category)[metric].sum().sort_values(ascending=False).head(8)
+            if not grouped.empty:
+                cb2=BytesIO(); fig,ax=plt.subplots(figsize=(7.0,3.2)); grouped.sort_values().plot(kind="barh",ax=ax,color="#9B6BFF",edgecolor="#FFFFFF")
+                ax.set_title(f"Top categories by {metric}"); ax.set_xlabel(f"Total {metric}"); ax.set_ylabel(str(category)); ax.grid(axis="x",alpha=.2); fig.tight_layout(); fig.savefig(cb2,format="png",dpi=140,bbox_inches="tight"); plt.close(fig); cb2.seek(0)
+                story += [Spacer(1,7), PDFImage(cb2,width=455,height=205), para(f"How to read it: bars compare the sum of {metric} across {category} groups. Longer bars represent larger totals in this dataset. Confirm that the metric is meaningful to aggregate before using it for decisions.", small)]
+                chart_count += 1
+        if chart_count == 0:
+            story.append(para("No suitable numeric field was available for an automatic chart. Add numeric measures or review the source columns, then regenerate the report.", body))
+    except Exception as exc:
+        story.append(para(f"Automatic charts could not be generated for this dataset ({type(exc).__name__}). The report still includes the text and data-quality findings.", body))
+    story += [PageBreak()]
+
+    # PAGE 5 — anomaly scan, evidence and definitions
+    story += [para("4. Anomalies, Evidence & Interpretation", h1), para("An anomaly is a value or pattern that differs from the rest of the dataset. It is a signal to investigate, not automatically an error.", body), para("Anomaly scan", h2)]
     if anomalies:
-        for a in anomalies:
-            story.append(Paragraph(f"{a['column']}: {a['count']:,} outliers ({a['rate']:.1f}%)", styles["Normal"]))
+        anomaly_rows=[["Field", "Flagged values", "Share", "What to do"]]
+        for a in anomalies[:12]:
+            anomaly_rows.append([str(a.get("column","Unknown"))[:28], f"{int(a.get('count',0)):,}", f"{float(a.get('rate',0)):.1f}%", "Check source and business context"])
+        at=Table(anomaly_rows,colWidths=[120,75,55,185],repeatRows=1)
+        at.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),rl_colors.HexColor("#252E63")),("TEXTCOLOR",(0,0),(-1,0),rl_colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),7.5),("GRID",(0,0),(-1,-1),0.35,rl_colors.HexColor("#D3D9E8")),("ROWBACKGROUNDS",(0,1),(-1,-1),[rl_colors.white,rl_colors.HexColor("#F4F7FC")]),("VALIGN",(0,0),(-1,-1),"TOP")]))
+        story.append(at)
     else:
-        story.append(Paragraph("No IQR-based anomalies detected in the scanned numeric columns.", styles["Normal"]))
-    story.append(Paragraph("Evidence", styles["Heading2"]))
-    for e in evidence:
-        story.append(Paragraph(f"{e['text']} Evidence: {e['evidence']}. Source: {e['source']}.", styles["Normal"]))
-        story.append(Spacer(1, 5))
-    doc.build(story)
+        story.append(para("No IQR-based anomalies were flagged by the current scan. This does not prove that all values are correct; rule-based checks may still be useful.", body))
+    story += [Spacer(1, 8), para("Evidence-backed observations", h2)]
+    if evidence:
+        for e in evidence[:12]:
+            story.append(KeepTogether([para(e.get("text","Observation"), body), para("Evidence: " + str(e.get("evidence","Not provided")) + " | Source: " + str(e.get("source","Uploaded dataset")), small), Spacer(1,4)]))
+    else:
+        story.append(para("No separate evidence observations were supplied to the report generator. Use the charts and data-quality checks above as the initial review.", body))
+    story += [para("Definitions & limitations", h2), para("• Data Health Score is an automated quality indicator, not a certification of accuracy.\n• Missing cells are blank/null values detected by the dataframe.\n• Duplicate rows are exact repeated rows; repeated IDs may require a separate key-based check.\n• Charts use available columns and basic aggregation rules.\n• AI summaries and recommendations should be validated by a human before operational use.", small)]
+
+    # Add page numbering and consistent footer.
+    def footer(canvas, doc_obj):
+        canvas.saveState()
+        canvas.setStrokeColor(rl_colors.HexColor("#D8DDF0")); canvas.line(42, 30, A4[0]-42, 30)
+        canvas.setFont("Helvetica", 8); canvas.setFillColor(rl_colors.HexColor("#667085"))
+        canvas.drawString(42, 18, "BUVIJAG AI • Sharp Intelligence for a Data-Driven World")
+        canvas.drawRightString(A4[0]-42, 18, f"Page {doc_obj.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -3562,10 +4014,36 @@ if buvijag_data_items:
 
     st.markdown('<div id="inventory" class="bj-anchor"></div>', unsafe_allow_html=True)
 
-    # 3. Smart Inventory Control
+
+    # 3. Generalized Business Operations Intelligence — works across business datasets.
+    st.markdown("### 🧭 Business Operations Intelligence")
+    ops_numeric = agent_df.select_dtypes(include="number").columns.tolist()
+    ops_cols = st.columns(3)
+    ops_cols[0].metric("Numeric measures", len(ops_numeric))
+    ops_cols[1].metric("Business dimensions", len([c for c in agent_df.columns if c not in ops_numeric]))
+    ops_cols[2].metric("Rows to review", int(agent_df.isna().any(axis=1).sum() + agent_df.duplicated().sum()))
+    ops_flags = []
+    if agent_df.isna().any().any():
+        ops_flags.append({"Area":"Dataset", "Signal":"Missing values", "Records":int(agent_df.isna().sum().sum()), "Suggested action":"Review missing values in important fields before decisions."})
+    if agent_df.duplicated().any():
+        ops_flags.append({"Area":"Dataset", "Signal":"Duplicate rows", "Records":int(agent_df.duplicated().sum()), "Suggested action":"Check duplicates before calculating totals or counts."})
+    for col in ops_numeric:
+        values = pd.to_numeric(agent_df[col], errors="coerce")
+        if (values < 0).any():
+            ops_flags.append({"Area":col, "Signal":"Negative values", "Records":int((values < 0).sum()), "Suggested action":"Check whether these are refunds, adjustments or data errors."})
+        if (values == 0).any():
+            ops_flags.append({"Area":col, "Signal":"Zero values", "Records":int((values == 0).sum()), "Suggested action":"Confirm that zero is valid for this measure."})
+    if ops_flags:
+        st.dataframe(pd.DataFrame(ops_flags).drop_duplicates(), use_container_width=True, hide_index=True)
+    else:
+        st.success("No general operational data-quality flags were detected in this scan.")
+    st.caption("Designed for sales, finance, customers, service, logistics and other business data. Inventory analysis appears separately only when relevant columns are present.")
+
+
+    # Inventory-specific signals (optional)
     inventory = _buvijag_inventory(agent_df)
     if inventory:
-        st.markdown("### 🛒 Smart Inventory Control")
+        st.markdown("### 🧭 Business Operations Intelligence · Inventory Signals")
         st.caption("BUVIJAG detects stock levels, reorder thresholds, and sales velocity. Alerts are calculated from the uploaded data; inferred reorder levels are clearly labeled.")
         inv = inventory["data"]
         critical = int(inv["Status"].isin(["🔴 OUT OF STOCK", "🔴 REORDER NOW"]).sum())
@@ -3602,6 +4080,84 @@ if buvijag_data_items:
             if pd.notna(u.get("Days Remaining")):
                 extra = f" Estimated stock remaining: {float(u['Days Remaining']):.1f} day(s)."
             st.error(f"🚨 **{u['Product']} — REORDER NOW.** Current stock: {float(u['Current Stock']):,.0f} • Reorder level: {float(u['Reorder Level']):,.0f}. Suggested reorder quantity: {int(u['Suggested Reorder Qty']):,}.{extra}")
+
+
+    # 4. Interactive Visualization Studio — customizable chart, axes, aggregation and colour.
+    st.markdown("### 🎨 Interactive Visualization Studio")
+    st.caption("Build a chart from your own choices — not only ascending or descending sorting.")
+    all_cols = agent_df.columns.tolist()
+    numeric_cols = agent_df.select_dtypes(include="number").columns.tolist()
+    cat_cols = [c for c in all_cols if c not in numeric_cols]
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        chart_type = st.selectbox("Chart type", ["Bar", "Line", "Area", "Pie", "Scatter", "Box", "Histogram"], key="bj_custom_chart_type")
+        x_col = st.selectbox("Category / X-axis", all_cols, key="bj_custom_chart_x")
+    with c2:
+        y_options = numeric_cols if numeric_cols else all_cols
+        y_col = st.selectbox("Value / Y-axis", y_options, key="bj_custom_chart_y")
+        aggregation = st.selectbox("Aggregation", ["Sum", "Average", "Count", "Median", "Minimum", "Maximum"], key="bj_custom_chart_agg")
+    with c3:
+        color_theme = st.selectbox("Colour palette", ["Vivid", "Ocean", "Sunset", "Emerald", "Monochrome"], key="bj_custom_chart_palette")
+        sort_order = st.selectbox("Order", ["Largest first", "Smallest first", "Original order"], key="bj_custom_chart_sort")
+        max_categories = st.slider("Categories / bins", 3, 30, 10, key="bj_custom_chart_limit")
+    color_palettes = {
+        "Vivid":["#7C3AED","#06B6D4","#F59E0B","#EC4899","#22C55E","#EF4444"],
+        "Ocean":["#0369A1","#0891B2","#38BDF8","#14B8A6","#6366F1","#0F766E"],
+        "Sunset":["#F97316","#EF4444","#DB2777","#F59E0B","#8B5CF6","#FB7185"],
+        "Emerald":["#047857","#10B981","#84CC16","#0D9488","#65A30D","#34D399"],
+        "Monochrome":["#111827","#374151","#6B7280","#9CA3AF","#D1D5DB","#4B5563"]
+    }
+    palette = color_palettes[color_theme]
+    agg_map = {"Sum":"sum","Average":"mean","Count":"count","Median":"median","Minimum":"min","Maximum":"max"}
+    try:
+        if chart_type == "Histogram":
+            hist_values = pd.to_numeric(agent_df[x_col], errors="coerce").dropna()
+            fig_custom = px.histogram(x=hist_values, nbins=max_categories, title=f"Distribution of {x_col}", color_discrete_sequence=palette)
+        elif chart_type == "Scatter":
+            if not numeric_cols:
+                st.warning("Scatter charts need numeric fields.")
+                fig_custom = None
+            else:
+                scatter_x = x_col if x_col in numeric_cols else numeric_cols[0]
+                scatter_y = y_col if y_col in numeric_cols else numeric_cols[-1]
+                fig_custom = px.scatter(agent_df, x=scatter_x, y=scatter_y, color=x_col if x_col in cat_cols else None,
+                                        title=f"{scatter_y} vs {scatter_x}", color_discrete_sequence=palette)
+        elif chart_type == "Box":
+            if y_col not in numeric_cols:
+                st.warning("Box charts need a numeric value field.")
+                fig_custom = None
+            else:
+                fig_custom = px.box(agent_df, x=x_col if x_col in cat_cols else None, y=y_col,
+                                    title=f"Distribution of {y_col}", color=x_col if x_col in cat_cols else None,
+                                    color_discrete_sequence=palette)
+        else:
+            temp = agent_df[[x_col, y_col]].copy()
+            temp[y_col] = pd.to_numeric(temp[y_col], errors="coerce")
+            grouped = temp.groupby(x_col, dropna=False)[y_col].agg(agg_map[aggregation]).reset_index()
+            if sort_order == "Largest first":
+                grouped = grouped.sort_values(y_col, ascending=False)
+            elif sort_order == "Smallest first":
+                grouped = grouped.sort_values(y_col, ascending=True)
+            grouped = grouped.head(max_categories)
+            if chart_type == "Pie":
+                fig_custom = px.pie(grouped, names=x_col, values=y_col, title=f"{aggregation} {y_col} by {x_col}",
+                                    color_discrete_sequence=palette, hole=0.35)
+            elif chart_type == "Line":
+                fig_custom = px.line(grouped, x=x_col, y=y_col, markers=True, title=f"{aggregation} {y_col} by {x_col}", color_discrete_sequence=palette)
+            elif chart_type == "Area":
+                fig_custom = px.area(grouped, x=x_col, y=y_col, title=f"{aggregation} {y_col} by {x_col}", color_discrete_sequence=palette)
+            else:
+                fig_custom = px.bar(grouped, x=x_col, y=y_col, title=f"{aggregation} {y_col} by {x_col}",
+                                    color=x_col, color_discrete_sequence=palette)
+        if fig_custom is not None:
+            fig_custom.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                     font=dict(color="#E8E8F7"), title_font_size=20, margin=dict(l=20,r=20,t=60,b=20))
+            st.plotly_chart(fig_custom, use_container_width=True, key="bj_custom_chart_preview")
+            st.download_button("⬇️ Download interactive chart (HTML)", data=fig_custom.to_html(include_plotlyjs="cdn"),
+                               file_name="BUVIJAG_Interactive_Chart.html", mime="text/html", key="bj_custom_chart_html")
+    except Exception as chart_error:
+        st.warning(f"Unable to create this chart with the selected fields: {chart_error}")
+
 
     # 4. Automatic chart selection
     st.markdown("### 📊 BUVIJAG's Recommended Visualizations")

@@ -1,0 +1,8 @@
+BUVIJAG AI — FINAL GITHUB UPLOAD CHECKLIST
+
+1. Extract this ZIP first. Do not upload only the ZIP as the application.
+2. Upload all files inside the extracted BUVIJAG_AI_GITHUB_READY folder to the root of your GitHub repository.
+3. Confirm app.py, requirements.txt, README.md, BUVIJAG_login_reference.webp, logo, documents, demo datasets, and demo video are present.
+4. Do NOT upload .streamlit/secrets.toml or any real API key/password.
+5. Streamlit Cloud: set GEMINI_API_KEY, APP_USERNAME, APP_PASSWORD in App Settings > Secrets.
+6. Verify the app starts after deployment and test login, upload, charts, insights, and PDF export.
