@@ -1,6 +1,15 @@
+<<<<<<< HEAD
 .streamlit/secrets.toml
 secrets.toml
 .env
 .env.*
 __pycache__/
 *.py[cod]
+=======
+
+.streamlit/secrets.toml
+streamlit/secrets.toml
+>>>>>>> b17161d (Protect API secrets)
+
+.streamlit/secrets.toml
+streamlit/secrets.toml
